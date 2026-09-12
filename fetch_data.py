@@ -7,7 +7,7 @@ PTEN copy-number dosage / glutaminolysis study.
 By default this fetches ALL 32 solid-tumor PanCancer Atlas studies, enabling
 the pan-cancer design with a pre-specified inclusion rule applied downstream
 by analyze.py (a study enters the analysis only if it has enough tumors in
-each PTEN dosage tier). Use --primary to fetch only the four pre-registered
+each PTEN dosage tier). Use --primary to fetch only the four initial-design
 primary-analysis studies (UCEC, PRAD, BRCA, GBM), or --studies to name a set.
 
 The datahub stores each file on GitHub using git-LFS. This script resolves
