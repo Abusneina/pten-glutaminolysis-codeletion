@@ -62,7 +62,7 @@ STUDY_LABELS = {
     "uvm_tcga_pan_can_atlas_2018": "UVM",
 }
 
-# Pre-registered primary-analysis subset (mechanistically motivated).
+# Initial-design subset, retained for figure presentation only.
 PRIMARY = {"UCEC", "PRAD", "BRCA", "GBM"}
 
 # Pre-specified inclusion rule: a study enters the analysis only if it has at
