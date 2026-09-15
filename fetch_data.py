@@ -4,11 +4,13 @@ fetch_data.py
 Download TCGA PanCancer Atlas studies from the cBioPortal datahub for the
 PTEN copy-number dosage / glutaminolysis study.
 
-By default this fetches ALL 32 solid-tumor PanCancer Atlas studies, enabling
+By default this fetches all 31 solid-tumor PanCancer Atlas studies, enabling
 the pan-cancer design with a pre-specified inclusion rule applied downstream
 by analyze.py (a study enters the analysis only if it has enough tumors in
-each PTEN dosage tier). Use --primary to fetch only the four initial-design
-primary-analysis studies (UCEC, PRAD, BRCA, GBM), or --studies to name a set.
+each PTEN dosage tier). Use --primary to fetch only the four studies
+the original four-cohort design used (UCEC, PRAD, BRCA, GBM), or --studies to
+name a set. That subset has no analytical role in the present paper, which
+analyzes every study meeting the inclusion rule.
 
 The datahub stores each file on GitHub using git-LFS. This script resolves
 each file through the GitHub LFS batch API (host: github.com) and downloads

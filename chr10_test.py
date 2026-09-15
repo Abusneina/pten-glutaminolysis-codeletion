@@ -61,8 +61,7 @@ def run(datadir, outdir):
             continue
         r10, p10 = stats.spearmanr(sev, chr10)
         roff, poff = stats.spearmanr(sev, off)
-        cohort = "primary" if label in A.PRIMARY else "extension"
-        rows.append({"study": label, "cohort": cohort,
+        rows.append({"study": label,
                      "rho_chr10_genes": r10, "p_chr10": p10,
                      "rho_offchr10_genes": roff, "p_offchr10": poff,
                      "difference": r10 - roff})
@@ -104,7 +103,6 @@ def run(datadir, outdir):
         ax.axvline(0, color="grey", lw=0.8, ls="--")
         ax.set_yticks(y); ax.set_yticklabels(order["study"], fontsize=9)
         ax.set_xlabel("Spearman rho vs PTEN loss severity")
-        ax.set_title("Chromosome-10 signature genes fall more steeply with PTEN loss", pad=12)
         ax.legend(loc="lower left", frameon=False, fontsize=8)
         ax.margins(y=0.03); plt.tight_layout(); fig.subplots_adjust(left=0.16, right=0.97)
         fig.savefig(os.path.join(outdir, "fig5_chr10_codeletion.png"))

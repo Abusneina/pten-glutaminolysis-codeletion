@@ -62,8 +62,11 @@ STUDY_LABELS = {
     "uvm_tcga_pan_can_atlas_2018": "UVM",
 }
 
-# Initial-design subset, retained for figure presentation only.
-PRIMARY = {"UCEC", "PRAD", "BRCA", "GBM"}
+# Cohorts shown in the survival grid below. A display choice only: every study
+# meeting the inclusion rule is analyzed identically and appears in the CSVs.
+# These four are the ones the manuscript's survival paragraph discusses, and
+# they match the panels of S1 Fig.
+KM_DISPLAY = ["UCEC", "GBM", "PRAD", "BRCA"]
 
 # Pre-specified inclusion rule: a study enters the analysis only if it has at
 # least MIN_TIER tumors in each of HemDel and HomDel, and at least MIN_INTACT
@@ -152,7 +155,6 @@ def aim1(study_dirs, outdir, genes=GLUTAMINOLYSIS_GENES):
         # Pre-specified inclusion rule.
         included = (n["HemDel"] >= MIN_TIER and n["HomDel"] >= MIN_TIER
                     and n["Intact"] >= MIN_INTACT)
-        cohort = "primary" if label in PRIMARY else "extension"
 
         present_tiers = [t for t in TIERS if n[t] >= 3]
         if len(present_tiers) >= 2:
@@ -163,7 +165,7 @@ def aim1(study_dirs, outdir, genes=GLUTAMINOLYSIS_GENES):
         rho, rho_p = stats.spearmanr(sev.loc[common], s.loc[common])
 
         rows.append({
-            "study": label, "cohort": cohort, "included": included,
+            "study": label, "included": included,
             "n_intact": n["Intact"], "n_hemdel": n["HemDel"], "n_homdel": n["HomDel"],
             "median_intact": groups["Intact"].median() if n["Intact"] else np.nan,
             "median_hemdel": groups["HemDel"].median() if n["HemDel"] else np.nan,
@@ -174,10 +176,10 @@ def aim1(study_dirs, outdir, genes=GLUTAMINOLYSIS_GENES):
         if included:
             for tier in TIERS:
                 for val in groups[tier]:
-                    pooled.append({"study": label, "cohort": cohort, "tier": tier, "score": val})
+                    pooled.append({"study": label, "tier": tier, "score": val})
             for tier in ("HemDel", "HomDel"):
                 u, pu = stats.mannwhitneyu(groups[tier], groups["Intact"], alternative="two-sided")
-                pair_rows.append({"study": label, "cohort": cohort,
+                pair_rows.append({"study": label,
                                   "comparison": f"{tier} vs Intact",
                                   "median_diff": groups[tier].median() - groups["Intact"].median(),
                                   "p_value": pu})
@@ -199,20 +201,17 @@ def aim1(study_dirs, outdir, genes=GLUTAMINOLYSIS_GENES):
     res.to_csv(os.path.join(outdir, "aim1_dose_response_by_study.csv"), index=False)
     pair.to_csv(os.path.join(outdir, "aim1_pairwise_vs_intact.csv"), index=False)
 
-    _fig1_primary_boxplot(pd.DataFrame(pooled), outdir)
+    _fig1_signature_boxplot(pd.DataFrame(pooled), outdir)
     _fig1b_trend_forest(res, outdir)
     return res, pair
 
 
-def _fig1_primary_boxplot(pooled, outdir):
-    """Boxplot of signature by dosage, restricted to the primary studies."""
+def _fig1_signature_boxplot(pooled, outdir):
+    """Boxplot of signature by dosage across every included study."""
     if len(pooled) == 0:
         return
-    pooled = pooled[pooled["cohort"] == "primary"]
-    if len(pooled) == 0:
-        return
-    studies = [s for s in ["UCEC", "PRAD", "BRCA", "GBM"] if s in set(pooled["study"])]
-    fig, ax = plt.subplots(figsize=(1.9 * len(studies) + 2, 4.4), dpi=300)
+    studies = sorted(set(pooled["study"]))
+    fig, ax = plt.subplots(figsize=(1.25 * len(studies) + 2, 4.4), dpi=300)
     ticks, labels = [], []
     for i, st in enumerate(studies):
         for j, tier in enumerate(TIERS):
@@ -230,7 +229,7 @@ def _fig1_primary_boxplot(pooled, outdir):
     ax.set_xticks(ticks)
     ax.set_xticklabels(labels)
     ax.set_ylabel("Glutaminolysis signature score (mean gene z-score)")
-    ax.set_title("Primary cohort: glutaminolysis signature across PTEN dosage", pad=26)
+    ax.set_title("Glutaminolysis signature across PTEN dosage, included studies", pad=26)
     ax.axhline(0, color="grey", lw=0.6, ls="--")
     ax.legend(handles=[Patch(facecolor=TIER_COLORS[t], label=t) for t in TIERS],
               loc="lower center", bbox_to_anchor=(0.5, 1.02), frameon=False, ncol=3)
@@ -248,8 +247,8 @@ def _fig1b_trend_forest(res, outdir):
         return
     d = d.sort_values("spearman_rho_severity", ascending=True)
     y = np.arange(len(d))
-    colors = ["#1F3864" if c == "primary" else "#7f8c8d" for c in d["cohort"]]
     sig = d["spearman_p_adj_BH"] < 0.05
+    colors = ["#7B2D26" if s else "#6E6E6E" for s in sig]
     fig, ax = plt.subplots(figsize=(7.6, 0.42 * len(d) + 1.8), dpi=300)
     ax.scatter(d["spearman_rho_severity"], y, c=colors,
                s=[46 if s else 26 for s in sig],
@@ -259,8 +258,8 @@ def _fig1b_trend_forest(res, outdir):
     ax.set_yticklabels([f"{lab}{' *' if s else ''}" for lab, s in zip(d['study'], sig)], fontsize=8)
     ax.set_xlabel("Spearman rho (glutaminolysis signature vs PTEN loss severity)")
     ax.set_title("Pan-cancer dose-response across included tumor types", pad=14)
-    ax.legend(handles=[Patch(facecolor="#1F3864", label="Primary"),
-                       Patch(facecolor="#7f8c8d", label="Extension")],
+    ax.legend(handles=[Patch(facecolor="#7B2D26", label="Significant"),
+                       Patch(facecolor="#6E6E6E", label="Not significant")],
               loc="lower right", frameon=True, framealpha=0.9, edgecolor="none", fontsize=8)
     ax.margins(y=0.02)
     plt.tight_layout()
@@ -308,7 +307,6 @@ def aim3(study_dirs, outdir, genes=GLUTAMINOLYSIS_GENES):
         n_hem = int((df.tier == "HemDel").sum())
         n_hom = int((df.tier == "HomDel").sum())
         included = (n_hem >= MIN_TIER and n_hom >= MIN_TIER and n_int >= MIN_INTACT)
-        cohort = "primary" if label in PRIMARY else "extension"
 
         df["severity"] = df["tier"].map(SEVERITY)
         try:
@@ -326,23 +324,22 @@ def aim3(study_dirs, outdir, genes=GLUTAMINOLYSIS_GENES):
             p_lr = np.nan
 
         surv_rows.append({
-            "study": label, "cohort": cohort, "included": included, "n": len(df),
+            "study": label, "included": included, "n": len(df),
             "n_intact": n_int, "n_hemdel": n_hem, "n_homdel": n_hom,
             "HR_per_severity_step": hr_sev, "p_severity": p_sev,
             "HR_signature": hr_sig, "p_signature": p_sig,
             "multivariate_logrank_p": p_lr,
         })
         if included:
-            km_records.append((label, cohort, df))
+            km_records.append((label, df))
 
     res = pd.DataFrame(surv_rows)
     res.to_csv(os.path.join(outdir, "aim3_survival_by_dosage.csv"), index=False)
 
-    # KM grid restricted to the primary cohort to stay legible; every included
-    # study is still modeled in the CSV above.
-    prim = [(lab, df) for (lab, coh, df) in km_records if coh == "primary"]
-    order = [s for s in ["UCEC", "PRAD", "BRCA", "GBM"] if s in {l for l, _ in prim}]
-    prim = sorted(prim, key=lambda x: order.index(x[0]) if x[0] in order else 99)
+    # KM grid restricted to KM_DISPLAY to stay legible; every included study is
+    # still modeled in the CSV above.
+    prim = [(lab, df) for (lab, df) in km_records if lab in KM_DISPLAY]
+    prim = sorted(prim, key=lambda x: KM_DISPLAY.index(x[0]))
     if prim:
         nfig = len(prim)
         fig, axes = plt.subplots(1, nfig, figsize=(4.9 * nfig, 4.0), dpi=300, squeeze=False)
@@ -381,7 +378,7 @@ def main():
         n_inc = int(r1["included"].sum())
         print(f"\n[analyze] {n_inc}/{len(r1)} studies met the inclusion rule")
         print("=== Aim 1: dose-response (included studies) ===")
-        cols = ["study", "cohort", "n_intact", "n_hemdel", "n_homdel",
+        cols = ["study", "n_intact", "n_hemdel", "n_homdel",
                 "spearman_rho_severity", "spearman_p_adj_BH", "kruskal_p_adj_BH"]
         print(r1[r1["included"]][cols].to_string(index=False))
         excl = r1[~r1["included"]]["study"].tolist()
@@ -392,7 +389,7 @@ def main():
     r3 = aim3(study_dirs, args.outdir, genes)
     print("\n=== Aim 3: survival by PTEN dosage (included studies) ===")
     if len(r3):
-        print(r3[r3["included"]][["study", "cohort", "n", "HR_per_severity_step",
+        print(r3[r3["included"]][["study", "n", "HR_per_severity_step",
                                   "p_severity", "multivariate_logrank_p"]].to_string(index=False))
     else:
         print("(no Aim 3 results)")
